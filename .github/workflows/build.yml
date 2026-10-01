@@ -1,0 +1,58 @@
+name: Mod Derleyici
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Depoyu Klonla
+      uses: actions/checkout@v4
+
+    - name: Java 17 Kur
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: ZIP Dosyasını Bul ve Aç
+      run: |
+        ZIP_FILE=$(ls *.zip | head -n 1)
+        echo "Bulunan ZIP: $ZIP_FILE"
+        unzip -o "$ZIP_FILE" -d ./unpacked
+        mkdir -p bin
+
+    - name: Java Kodlarını Derle
+      run: |
+        # KorkuModu.java dosyasının yerini otomatik bul
+        JAVA_FILE=$(find unpacked -name "KorkuModu.java")
+        echo "Bulunan Java Dosyası: $JAVA_FILE"
+        javac -d bin "$JAVA_FILE"
+
+    - name: JAR Modunu Paketle
+      run: |
+        # fabric.mod.json dosyasını bul
+        JSON_FILE=$(find unpacked -name "fabric.mod.json")
+        cp "$JSON_FILE" ./fabric.mod.json
+        
+        cd bin
+        zip -r ../KorkuModu-1.20.1.jar .
+        cd ..
+        zip -g KorkuModu-1.20.1.jar fabric.mod.json
+        
+        # Assets klasörü varsa ekle
+        ASSETS_DIR=$(find unpacked -type d -name "assets")
+        if [ -n "$ASSETS_DIR" ]; then
+          cp -r "$ASSETS_DIR" ./assets
+          zip -r -g KorkuModu-1.20.1.jar assets/
+        fi
+
+    - name: JAR Dosyasını Yükle
+      uses: actions/upload-artifact@v4
+      with:
+        name: KorkuModu-1.20.1-JAR
+        path: KorkuModu-1.20.1.jar
