@@ -1,0 +1,56 @@
+name: Mod Derleyici
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Depoyu Klonla
+      uses: actions/checkout@v4
+
+    - name: Java 21 Kur (Loom İhtiyacı İçin)
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Fabric Örnek Projeyi İndir
+      run: |
+        git clone --depth 1 https://github.com/FabricMC/fabric-example-mod.git template
+        
+        ZIP_FILE=$(ls *.zip | head -n 1)
+        unzip -o "$ZIP_FILE" -d ./unpacked
+
+        JAVA_FILE=$(find unpacked -name "KorkuModu.java")
+        JSON_FILE=$(find unpacked -name "fabric.mod.json")
+        
+        mkdir -p template/src/main/java/com/korkumodu
+        cp "$JAVA_FILE" template/src/main/java/com/korkumodu/KorkuModu.java
+        cp "$JSON_FILE" template/src/main/resources/fabric.mod.json
+        
+        # Loom derlemeyi başarsın ama çıktıyı Java 17 (Java 8/17 bytecode) olarak üretsin
+        sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' template/build.gradle
+        sed -i 's/targetCompatibility = 21/targetCompatibility = 17/g' template/build.gradle
+        sed -i 's/sourceCompatibility = 21/sourceCompatibility = 17/g' template/build.gradle
+        
+        ASSETS_DIR=$(find unpacked -type d -name "assets")
+        if [ -n "$ASSETS_DIR" ]; then
+          cp -r "$ASSETS_DIR" template/src/main/resources/
+        fi
+
+    - name: Derle
+      run: |
+        cd template
+        chmod +x gradlew
+        ./gradlew build --no-daemon
+
+    - name: JAR Yükle
+      uses: actions/upload-artifact@v4
+      with:
+        name: KorkuModu-1.20.1-JAR
+        path: template/build/libs/*.jar
