@@ -1,0 +1,54 @@
+name: Mod Derleyici
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Depoyu Klonla
+      uses: actions/checkout@v4
+
+    - name: Java 17 Kur
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Fabric Örnek Projeyi İndir
+      run: |
+        git clone --depth 1 https://github.com/FabricMC/fabric-example-mod.git template
+        
+        # ZIP dosyasını bul ve aç
+        ZIP_FILE=$(ls *.zip | head -n 1)
+        unzip -o "$ZIP_FILE" -d ./unpacked
+
+        # Dosyaları otomatik bul ve şablona yerleştir
+        JAVA_FILE=$(find unpacked -name "KorkuModu.java")
+        JSON_FILE=$(find unpacked -name "fabric.mod.json")
+        
+        mkdir -p template/src/main/java/com/korkumodu
+        cp "$JAVA_FILE" template/src/main/java/com/korkumodu/KorkuModu.java
+        cp "$JSON_FILE" template/src/main/resources/fabric.mod.json
+        
+        # Assets klasörü varsa ekle
+        ASSETS_DIR=$(find unpacked -type d -name "assets")
+        if [ -n "$ASSETS_DIR" ]; then
+          cp -r "$ASSETS_DIR" template/src/main/resources/
+        fi
+
+    - name: Gradle İzinlerini Ver ve Derle
+      run: |
+        cd template
+        chmod +x gradlew
+        ./gradlew build --no-daemon
+
+    - name: Bitmiş JAR Dosyasını Bul ve Yükle
+      uses: actions/upload-artifact@v4
+      with:
+        name: KorkuModu-1.20.1-JAR
+        path: template/build/libs/*.jar
