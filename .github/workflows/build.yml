@@ -1,0 +1,43 @@
+name: Mod Derleyici
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Depoyu Klonla
+      uses: actions/checkout@v4
+
+    - name: Java 17 Kur
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: ZIP Dosyasını Aç ve Klasörleri Düzenle
+      run: |
+        unzip -o KorkuModu.zip -d ./
+        mkdir -p bin
+
+    - name: Java Kodlarını Derle
+      run: |
+        javac -d bin src/com/korkumodu/KorkuModu.java
+
+    - name: JAR Modunu Paketle
+      run: |
+        cd bin
+        zip -r ../KorkuModu-1.20.1.jar .
+        cd ..
+        zip -g KorkuModu-1.20.1.jar fabric.mod.json
+        if [ -d "assets" ]; then zip -r -g KorkuModu-1.20.1.jar assets/; fi
+
+    - name: JAR Dosyasını Yükle
+      uses: actions/upload-artifact@v4
+      with:
+        name: KorkuModu-1.20.1-JAR
+        path: KorkuModu-1.20.1.jar
