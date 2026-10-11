@@ -1,0 +1,54 @@
+name: Blue and Red Door Derleme
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Depoyu indir
+        uses: actions/checkout@v4
+
+      - name: Java 17 kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: ZIP dosyasını çıkar
+        run: |
+          unzip -o BlueAndRedDoor_Forge_1.20.1_OnlineBuild.zip -d extracted
+          find extracted -name build.gradle -type f
+
+      - name: Projeyi bul ve derle
+        run: |
+          BUILD_FILE=$(find extracted -name build.gradle -type f | head -n 1)
+
+          if [ -z "$BUILD_FILE" ]; then
+            echo "HATA: ZIP içinde build.gradle bulunamadı!"
+            find extracted -maxdepth 4 -type f
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$BUILD_FILE")
+          echo "Proje klasörü: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+
+          gradle --no-daemon build
+
+      - name: JAR dosyasını yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: BlueAndRedDoor-JAR
+          path: extracted/**/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14
